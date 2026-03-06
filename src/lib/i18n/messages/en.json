@@ -1,0 +1,62 @@
+{
+  "header": {
+    "brand": "Ethereum",
+    "ethPrice": "ETH Price",
+    "gas": "Gas",
+    "gwei": "Gwei",
+    "totalAirdrop": "Ethereum Total Airdrop Amount",
+    "contractConfig": "Contract Config"
+  },
+  "table": {
+    "serialNumber": "No.",
+    "contractNumber": "Contract No.",
+    "activationTime": "Activation Time",
+    "contractAddress": "Contract Address",
+    "contractStatus": "Contract Status",
+    "deliveryStrategy": "Delivery Strategy",
+    "gasLimit": "Gas Limit",
+    "airdropQuantity": "Airdrop Quantity",
+    "airdropPercent": "Airdrop %",
+    "tokenFee": "Token Fee",
+    "gasCost": "Gas Cost",
+    "totalCost": "Total Cost",
+    "averageCost": "Avg Cost",
+    "cumulativeQuantity": "Cumulative Qty",
+    "noData": "No contract data available",
+    "errorLoading": "Failed to load contracts",
+    "retry": "Retry",
+    "loading": "Loading contracts..."
+  },
+  "status": {
+    "running": "Running",
+    "preparing": "Preparing",
+    "ready": "Ready",
+    "limited": "Limited",
+    "stopped": "Stopped"
+  },
+  "detail": {
+    "contractNumber": "Contract No.",
+    "activationTime": "Activation Time",
+    "contractAddress": "Contract Address",
+    "deliveryStrategy": "Delivery Strategy",
+    "gasLimit": "Gas Limit"
+  },
+  "chart": {
+    "title": "Metrics History",
+    "duration": "{minutes} min, {bars} bars, scroll",
+    "errorLoading": "Failed to load chart data",
+    "retry": "Retry",
+    "loading": "Loading chart..."
+  },
+  "actions": {
+    "play": "Play",
+    "pause": "Pause",
+    "scrollDown": "Scroll Down"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "tryAgain": "Try Again",
+    "close": "Close"
+  }
+}

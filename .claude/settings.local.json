@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(where node)",
+      "Bash(where npm)",
+      "Bash(where npx)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Read(//c/Program Files/**)",
+      "Read(//c//**)",
+      "Read(//d/work project/project1/file/Ethereum-Airdrop/$APPDATA/**)"
+    ]
+  }
+}

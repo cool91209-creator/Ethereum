@@ -1,0 +1,62 @@
+{
+  "header": {
+    "brand": "Ethereum",
+    "ethPrice": "ETH 价格",
+    "gas": "Gas",
+    "gwei": "Gwei",
+    "totalAirdrop": "Ethereum总空投数量",
+    "contractConfig": "合约配置"
+  },
+  "table": {
+    "serialNumber": "序号",
+    "contractNumber": "合约编号",
+    "activationTime": "启用时间",
+    "contractAddress": "合约地址",
+    "contractStatus": "合约状态",
+    "deliveryStrategy": "投放策略",
+    "gasLimit": "Gas 限额",
+    "airdropQuantity": "空投数量",
+    "airdropPercent": "空投占比",
+    "tokenFee": "token费用",
+    "gasCost": "Gas费用",
+    "totalCost": "总费用",
+    "averageCost": "平均成本",
+    "cumulativeQuantity": "累计数量",
+    "noData": "暂无合约数据",
+    "errorLoading": "加载合约失败",
+    "retry": "重试",
+    "loading": "正在加载合约..."
+  },
+  "status": {
+    "running": "运行",
+    "preparing": "准备中",
+    "ready": "就绪",
+    "limited": "受限",
+    "stopped": "停止"
+  },
+  "detail": {
+    "contractNumber": "合约编号",
+    "activationTime": "启用时间",
+    "contractAddress": "合约地址",
+    "deliveryStrategy": "投放策略",
+    "gasLimit": "Gas 限额"
+  },
+  "chart": {
+    "title": "指标历史",
+    "duration": "{minutes}分钟，{bars}个柱，滚动",
+    "errorLoading": "加载图表数据失败",
+    "retry": "重试",
+    "loading": "正在加载图表..."
+  },
+  "actions": {
+    "play": "播放",
+    "pause": "暂停",
+    "scrollDown": "向下滚动"
+  },
+  "common": {
+    "loading": "加载中...",
+    "error": "出了点问题",
+    "tryAgain": "重试",
+    "close": "关闭"
+  }
+}

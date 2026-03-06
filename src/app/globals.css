@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+/* Custom scrollbar for the table area */
+.overflow-auto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}

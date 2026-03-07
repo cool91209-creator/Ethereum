@@ -13,7 +13,7 @@ async function fetchDashboard(): Promise<DashboardSummary> {
     return await res.json();
   } catch (err) {
     console.error('[SSR] Failed to fetch dashboard:', err);
-    return { ethPrice: 0, ethPriceChange: 0, gasPrice: 0, totalAirdropAmount: 0 };
+    return { ethPrice: 0, ethPriceChange: 0, gasPrice: 0, totalTokenFee: 0 };
   }
 }
 
@@ -30,6 +30,7 @@ async function fetchContracts(): Promise<ContractsResponse> {
       data: [],
       totals: {
         totalAirdropQuantity: 0,
+        totalAirdropToday: 0,
         totalTokenFee: 0,
         totalGasCost: 0,
         totalCost: 0,

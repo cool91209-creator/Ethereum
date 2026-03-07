@@ -12,10 +12,19 @@ export interface Contract {
   activationTime: string;
   contractAddress: string;
   contractStatus: ContractStatus;
+  tokenSymbol: string;
   deliveryStrategy: DeliveryStrategy;
   gasLimit: number; // gwei as float
   airdropQuantity: number;
+  airdropYesterday: number;
+  airdropToday: number;
   tokenFee: number;
+  tokenAmount: number;
+  tokenWalletAmount: number;
+  tokenContractAmount: number;
+  tokenPrice: number;
+  txCountYesterday: number;
+  txCountToday: number;
   gasCost: number;
   totalCost: number;
   averageCost: number;
@@ -25,6 +34,8 @@ export interface Contract {
 // Aggregated totals row shown at bottom of table
 export interface ContractTotals {
   totalAirdropQuantity: number;
+  totalAirdropToday: number;
+  totalTxCountToday: number;
   totalTokenFee: number;
   totalGasCost: number;
   totalCost: number;
@@ -67,7 +78,7 @@ export interface DashboardSummary {
   ethPrice: number;
   ethPriceChange: number;
   gasPrice: number;
-  totalAirdropAmount: number;
+  totalTokenFee: number;
 }
 
 // Selected contract detail for the right panel

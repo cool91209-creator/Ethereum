@@ -12,40 +12,51 @@ export function ContractConfigModal({ open, onClose }: Props) {
   const t = useTranslations('modal');
   const [contractNumber, setContractNumber] = useState('');
   const [contractAddress, setContractAddress] = useState('');
-  const [gasLimit, setGasLimit] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
 
   if (!open) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // Simulate backend call: send contract config (address + gasLimit)
+    setStatusMsg('Fetching contract data from Etherscan...');
+
     const payload = {
       contractNumber,
-      contractAddress,
-      gasLimit: typeof gasLimit === 'number' ? gasLimit : Number(gasLimit),
+      contractAddress: contractAddress.trim(),
+      gasLimit: 0,
     };
 
     try {
-      // Send to Express backend via Next.js proxy
-      await fetch('/api/proxy/contracts/config', {
+      const res = await fetch('/api/proxy/contracts/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      // Trigger table refresh to reload real data from backend
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        setStatusMsg(`Error: ${err?.message || 'Failed to fetch contract data'}`);
+        setLoading(false);
+        return;
+      }
+
+      setStatusMsg('Contract added successfully!');
+
+      // Trigger table refresh to reload data from backend
       window.dispatchEvent(new Event('contracts:refresh'));
 
-      // Reset form
-      setContractNumber('');
-      setContractAddress('');
-      setGasLimit('');
-      onClose();
+      // Reset form after short delay so user sees the success message
+      setTimeout(() => {
+        setContractNumber('');
+        setContractAddress('');
+        setStatusMsg('');
+        onClose();
+      }, 800);
     } catch (err) {
       console.error(err);
-      onClose();
+      setStatusMsg('Network error — could not reach backend');
     } finally {
       setLoading(false);
     }
@@ -62,14 +73,19 @@ export function ContractConfigModal({ open, onClose }: Props) {
 
           <label className="block text-sm">{t('contractAddress')}</label>
           <input value={contractAddress} onChange={(e) => setContractAddress(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder={t('contractAddressPlaceholder')} />
-
-          <label className="block text-sm">{t('gasLimit')}</label>
-          <input value={gasLimit} onChange={(e) => setGasLimit(e.target.value === '' ? '' : Number(e.target.value))} type="number" step="0.0001" min="0" className="w-full border px-3 py-2 rounded" placeholder={t('gasLimitPlaceholder')} />
         </div>
 
+        {statusMsg && (
+          <div className={`mt-3 text-sm ${statusMsg.startsWith('Error') ? 'text-red-500' : 'text-blue-600'}`}>
+            {statusMsg}
+          </div>
+        )}
+
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-3 py-1 border rounded">{t('cancel')}</button>
-          <button type="submit" className="px-4 py-1 bg-blue-600 text-white rounded" disabled={loading || !contractNumber}>{t('apply')}</button>
+          <button type="button" onClick={onClose} className="px-3 py-1 border rounded" disabled={loading}>{t('cancel')}</button>
+          <button type="submit" className="px-4 py-1 bg-blue-600 text-white rounded" disabled={loading || !contractNumber || !contractAddress.trim()}>
+            {loading ? 'Loading...' : t('apply')}
+          </button>
         </div>
       </form>
     </div>

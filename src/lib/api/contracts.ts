@@ -8,6 +8,13 @@ import { apiClient } from './client';
  * Replace /api/contracts with your real endpoint path.
  * The apiClient handles proxy routing automatically.
  */
+export async function deleteContract(id: string): Promise<void> {
+  const response = await apiClient.delete<{ success: boolean }>(`/api/contracts/${id}`);
+  if (!response.success || response.error) {
+    throw new Error(response.error?.message || 'Failed to delete contract');
+  }
+}
+
 export async function fetchContracts(query: ContractsQuery): Promise<ContractsResponse> {
   const response = await apiClient.get<ContractsResponse>('/api/contracts', {
     page: query.page,

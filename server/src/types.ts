@@ -8,10 +8,19 @@ export interface Contract {
   activationTime: string;
   contractAddress: string;
   contractStatus: ContractStatus;
+  tokenSymbol: string;
   deliveryStrategy: DeliveryStrategy;
   gasLimit: number;
   airdropQuantity: number;
+  airdropYesterday: number;
+  airdropToday: number;
   tokenFee: number;
+  tokenAmount: number;       // wallet + contract combined (decimal-normalised)
+  tokenWalletAmount: number;  // wallet's holding of this token
+  tokenContractAmount: number;// contract's self-holding of its own token
+  tokenPrice: number;
+  txCountYesterday: number;   // count of outgoing token transactions yesterday
+  txCountToday: number;       // count of outgoing token transactions today
   gasCost: number;
   totalCost: number;
   averageCost: number;
@@ -28,6 +37,8 @@ export interface ContractDetail {
 
 export interface ContractTotals {
   totalAirdropQuantity: number;
+  totalAirdropToday: number;
+  totalTxCountToday: number;
   totalTokenFee: number;
   totalGasCost: number;
   totalCost: number;
@@ -52,7 +63,7 @@ export interface DashboardStats {
   ethPrice: number;
   ethPriceChange: number;
   gasPrice: number;
-  totalAirdropAmount: number;
+  totalTokenFee: number;
 }
 
 export interface ContractConfigPayload {

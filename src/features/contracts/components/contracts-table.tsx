@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-table';
 import type { Contract, ContractsResponse, ContractTotals } from '@/types';
 import { useContracts } from '@/lib/hooks/use-contracts';
+import { deleteContract } from '@/lib/api/contracts';
 import { ErrorDisplay } from '@/components/ui/error-display';
 import { ContractsTableSkeleton } from './contracts-table-skeleton';
 import { ContractStatusBadge } from './contract-status-badge';
@@ -51,6 +52,27 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = useCallback(async (e: React.MouseEvent, contract: Contract) => {
+    e.stopPropagation();
+    if (!confirm(`Delete contract "${contract.contractNumber}"?`)) return;
+    setDeletingId(contract.id);
+    try {
+      await deleteContract(contract.id);
+      setLocalContracts((prev) => {
+        const updated = prev
+          .filter((c) => c.id !== contract.id)
+          .map((c, i) => ({ ...c, serialNumber: i + 1 }));
+        setLocalTotals(calcTotals(updated));
+        return updated;
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete contract');
+    } finally {
+      setDeletingId(null);
+    }
+  }, []);
 
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
@@ -81,6 +103,11 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         header: t('activationTime'),
         cell: ({ row }) => formatActivationTime(row.original.activationTime),
         size: 110,
+      },
+      {
+        accessorKey: 'contractAddress',
+        header: t('contractAddress'),
+        size: 140,
       },
       {
         accessorKey: 'contractStatus',
@@ -134,35 +161,51 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
           </div>
         ),
         cell: ({ row }) => {
-          const qty = Number(row.original.airdropQuantity ?? 0);
-          const total = totals?.totalAirdropQuantity ?? 0;
-          const pct = total > 0 ? ((qty / total) * 100).toFixed(0) : '?';
-          return `${(qty * 2).toLocaleString()}/${qty.toLocaleString()}/${pct}%`;
+          const countYesterday = Number(row.original.txCountYesterday ?? 0);
+          const countToday = Number(row.original.txCountToday ?? 0);
+          const totalCountToday = totals?.totalTxCountToday ?? 0;
+          const ratio = totalCountToday > 0 ? ((countToday / totalCountToday) * 100).toFixed(2) : '0';
+          return `${countYesterday.toLocaleString()}/${countToday.toLocaleString()}/${ratio}%`;
         },
         size: 160,
       },
       {
-        accessorKey: 'tokenFee',
-        header: t('tokenFee'),
-        cell: ({ row }) => `$${row.original.tokenFee}`,
-        size: 80,
+        id: 'tokenCost',
+        header: t('tokenCost'),
+        cell: ({ row }) => {
+          const sym = row.original.tokenSymbol;
+          const amt = row.original.airdropToday ?? 0;
+          const price = row.original.tokenPrice ?? 0;
+          const usd = amt * price;
+          return (
+            <div>
+              <div className={`font-semibold ${usd > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                ${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs text-gray-400">
+                {amt.toLocaleString()} {sym || '—'}
+              </div>
+            </div>
+          );
+        },
+        size: 190,
       },
       {
         accessorKey: 'gasCost',
         header: t('gasCost'),
-        cell: ({ row }) => `$${row.original.gasCost}`,
+        cell: ({ row }) => `$${row.original.gasCost.toFixed(2)}`,
         size: 80,
       },
       {
         accessorKey: 'totalCost',
         header: t('totalCost'),
-        cell: ({ row }) => `$${row.original.totalCost}`,
+        cell: ({ row }) => `$${row.original.totalCost.toFixed(2)}`,
         size: 80,
       },
       {
         accessorKey: 'averageCost',
         header: t('averageCost'),
-        cell: ({ row }) => `$${row.original.averageCost}`,
+        cell: ({ row }) => `$${row.original.averageCost.toFixed(6)}`,
         size: 90,
       },
       {
@@ -171,8 +214,33 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         cell: ({ row }) => row.original.cumulativeQuantity.toLocaleString(),
         size: 100,
       },
+      {
+        id: 'actions',
+        header: '',
+        size: 44,
+        enableSorting: false,
+        cell: ({ row }) => (
+          <button
+            className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+            title="Delete row"
+            disabled={deletingId === row.original.id}
+            onClick={(e) => handleDelete(e, row.original)}
+          >
+            {deletingId === row.original.id ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+          </button>
+        ),
+      },
     ],
-    [t, totals]
+    [t, totals, deletingId, handleDelete]
   );
 
   // Keep a local copy of contracts to allow immediate UI updates when config is applied
@@ -223,10 +291,19 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
           activationTime,
           contractAddress: String(detail.updates?.contractAddress ?? ''),
           contractStatus: 'preparing',
+          tokenSymbol: '',
           deliveryStrategy: '1+2+3',
           gasLimit: (detail.updates?.gasLimit as number) ?? 0,
           airdropQuantity: (detail.updates?.airdropQuantity as number) ?? 0,
+          airdropYesterday: 0,
+          airdropToday: 0,
           tokenFee: (detail.updates?.tokenFee as number) ?? 0,
+          tokenAmount: (detail.updates?.tokenAmount as number) ?? 0,
+          tokenWalletAmount: (detail.updates?.tokenWalletAmount as number) ?? 0,
+          tokenContractAmount: (detail.updates?.tokenContractAmount as number) ?? 0,
+          tokenPrice: (detail.updates?.tokenPrice as number) ?? 0,
+          txCountYesterday: 0,
+          txCountToday: 0,
           gasCost: (detail.updates?.gasCost as number) ?? 0,
           totalCost: (detail.updates?.totalCost as number) ?? 0,
           averageCost: (detail.updates?.averageCost as number) ?? 0,
@@ -253,22 +330,22 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
 
   function calcTotals(list: Contract[]): ContractTotals {
     const totalAirdropQuantity = list.reduce((s, c) => s + (Number(c.airdropQuantity) || 0), 0);
+    const totalAirdropToday = list.reduce((s, c) => s + (Number(c.airdropToday) || 0), 0);
+    const totalTxCountToday = list.reduce((s, c) => s + (Number(c.txCountToday) || 0), 0);
     const totalTokenFee = list.reduce((s, c) => s + (c.tokenFee || 0), 0);
     const totalGasCost = list.reduce((s, c) => s + (c.gasCost || 0), 0);
     const totalCost = list.reduce((s, c) => s + (c.totalCost || 0), 0);
     const grandCumulativeQuantity = list.reduce((s, c) => s + (c.cumulativeQuantity || 0), 0);
     return {
       totalAirdropQuantity,
+      totalAirdropToday,
+      totalTxCountToday,
       totalTokenFee,
       totalGasCost,
       totalCost,
       totalAverageCost: totalCost ? totalCost / Math.max(1, totalAirdropQuantity) : 0,
       grandCumulativeQuantity,
     };
-  }
-
-  if (isLoading && contracts.length === 0) {
-    return <ContractsTableSkeleton />;
   }
 
   if (error) {
@@ -303,7 +380,19 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.length > 0 ? (
+            {isLoading && contracts.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="py-16 text-center text-sm text-gray-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Fetching contract data from Etherscan...
+                  </div>
+                </td>
+              </tr>
+            ) : table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
@@ -373,7 +462,10 @@ function TotalsRow({ totals }: { totals: ContractTotals }) {
     <div className="flex items-center justify-end gap-8 px-4 py-3 bg-white border-t border-eth-border text-sm font-semibold text-blue-600">
       <span>{totals.totalAirdropQuantity.toLocaleString()}</span>
       <span>${totals.totalTokenFee.toLocaleString()}</span>
-      <span>${totals.totalGasCost.toLocaleString()}</span>
+      <div className="flex flex-col items-end">
+        <span>${totals.totalGasCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span className="text-xs text-gray-400 font-normal">Total Gas Today</span>
+      </div>
       <span>${totals.totalCost.toLocaleString()}</span>
       <span>${totals.totalAverageCost}</span>
       <span>{totals.grandCumulativeQuantity.toLocaleString()}</span>

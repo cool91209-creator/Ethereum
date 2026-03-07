@@ -31,7 +31,7 @@ export function DashboardHeader({ summary }: DashboardHeaderProps) {
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-500">{t('ethPrice')}:</span>
           <span className="font-semibold text-green-500">
-            ${summary.ethPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            ${summary.ethPrice.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}
           </span>
           <span className={`text-xs ${isNegative ? 'text-red-500' : 'text-green-500'}`}>
             ({isNegative ? '' : '+'}{summary.ethPriceChange}%)
@@ -51,10 +51,10 @@ export function DashboardHeader({ summary }: DashboardHeaderProps) {
         <LocaleSwitcher />
       </div>
 
-      {/* Total Airdrop */}
+      {/* Total Token Fee */}
       <div className="text-right">
         <span className="text-lg font-bold text-gray-900">
-          {t('totalAirdrop')}：{summary.totalAirdropAmount.toLocaleString('en-US')}
+          {t('totalTokenFee')}：${(summary.totalTokenFee ?? 0).toFixed(2)}
         </span>
       </div>
     </header>

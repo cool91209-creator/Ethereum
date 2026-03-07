@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listContracts, getContract, configureContract } from '../controllers/contractsController';
+import { listContracts, getContract, configureContract, deleteContractById } from '../controllers/contractsController';
 import { getStats } from '../controllers/statsController';
 
 const router = Router();
@@ -15,5 +15,8 @@ router.get('/:id', getContract);
 
 // POST /api/contracts/config
 router.post('/config', configureContract);
+
+// DELETE /api/contracts/:id
+router.delete('/:id', deleteContractById);
 
 export default router;

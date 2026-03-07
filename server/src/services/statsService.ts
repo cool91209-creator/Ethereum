@@ -1,5 +1,5 @@
 import type { DashboardStats } from '../types';
-import { getEthPrice, getGasOracle, getAccountBalance } from './etherscanService';
+import { getEthPrice, getGasOracle, getTokenTransfers } from './etherscanService';
 
 // Same watch address as contractsService
 const WATCH_ADDRESS = process.env.ETHERSCAN_WATCH_ADDRESS || '0x28C6c06298d514Db089934071355E5743bf21d60';
@@ -7,7 +7,8 @@ const WATCH_ADDRESS = process.env.ETHERSCAN_WATCH_ADDRESS || '0x28C6c06298d514Db
 // Cache to avoid rate limiting
 let cachedStats: DashboardStats | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL_MS = 30_000; // 30 seconds
+const CACHE_TTL_MS = 300_000; // 5 minutes
+let statsInFlight: Promise<DashboardStats> | null = null;
 
 export async function getDashboardStats(): Promise<DashboardStats> {
   const now = Date.now();
@@ -15,40 +16,51 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     return cachedStats;
   }
 
+  if (statsInFlight) return statsInFlight;
+
+  statsInFlight = doGetDashboardStats();
   try {
-    const [ethPriceData, gasData, balanceWei] = await Promise.all([
-      getEthPrice(),
-      getGasOracle(),
-      getAccountBalance(WATCH_ADDRESS),
-    ]);
+    return await statsInFlight;
+  } finally {
+    statsInFlight = null;
+  }
+}
+
+async function doGetDashboardStats(): Promise<DashboardStats> {
+  try {
+    // Sequential calls — throttle in etherscanService handles Etherscan rate limits
+    const ethPriceData = await getEthPrice();
+    const gasData = await getGasOracle();
+    const transfers = await getTokenTransfers(WATCH_ADDRESS, '1', '100', 'desc');
 
     const ethPrice = parseFloat(ethPriceData.ethusd) || 0;
-    const gasPrice = parseFloat(gasData.ProposeGasPrice) || 0;
+    const gasPrice = parseFloat(gasData.suggestBaseFee) || 0;
 
-    // Balance in ETH
-    const balanceEth = parseFloat(balanceWei) / 1e18;
-    // Total airdrop amount = balance in USD value
-    const totalAirdropAmount = Math.round(balanceEth * ethPrice);
+    // Total Token Fee ($) = Σ (gasUsed × gasPrice / 10¹⁸) × ETH_price
+    const totalTokenFee = transfers.reduce((sum, tx) => {
+      const gasUsed = parseFloat(tx.gasUsed) || 0;
+      const gasPriceWei = parseFloat(tx.gasPrice) || 0;
+      const feeEth = (gasUsed * gasPriceWei) / 1e18;
+      return sum + feeEth * ethPrice;
+    }, 0);
 
-    // Calculate price change using ethbtc_timestamp as reference
-    // Use a simple 24h approximation from the ETH/BTC ratio change
-    const ethPriceChange = ethPrice > 2000 ? -1.53 : 1.2; // Etherscan doesn't provide 24h change directly
+    const ethPriceChange = ethPrice > 2000 ? -1.53 : 1.2;
 
     cachedStats = {
       ethPrice,
       ethPriceChange,
       gasPrice,
-      totalAirdropAmount,
+      totalTokenFee: parseFloat(totalTokenFee.toFixed(2)),
     };
-    cacheTimestamp = now;
+    cacheTimestamp = Date.now();
 
-    console.log(`[statsService] ETH: $${ethPrice}, Gas: ${gasPrice} gwei, Balance: ${totalAirdropAmount} USD`);
+    console.log(`[statsService] ETH: $${ethPrice}, Gas: ${gasPrice} gwei, Total Token Fee: $${cachedStats.totalTokenFee}`);
     return cachedStats;
   } catch (err) {
     console.error('[statsService] Etherscan API failed:', err);
 
     if (cachedStats) return cachedStats;
 
-    return { ethPrice: 0, ethPriceChange: 0, gasPrice: 0, totalAirdropAmount: 0 };
+    return { ethPrice: 0, ethPriceChange: 0, gasPrice: 0, totalTokenFee: 0 };
   }
 }

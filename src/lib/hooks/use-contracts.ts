@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Contract, ContractsResponse, ContractTotals, PaginationMeta, ApiError } from '@/types';
 import type { ContractsQuery } from '@/lib/schemas/contracts';
 
@@ -17,7 +17,7 @@ export function useContracts(initialData?: ContractsResponse) {
     contracts: initialData?.data ?? [],
     totals: initialData?.totals ?? null,
     pagination: initialData?.pagination ?? null,
-    isLoading: !initialData,
+    isLoading: false,  // start non-loading: table is empty by default
     error: null,
   });
 
@@ -25,6 +25,8 @@ export function useContracts(initialData?: ContractsResponse) {
     page: 1,
     pageSize: 20,
   });
+
+  const isMounted = useRef(false);
 
   const fetchData = useCallback(async (q: ContractsQuery) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -62,10 +64,14 @@ export function useContracts(initialData?: ContractsResponse) {
   }, []);
 
   useEffect(() => {
-    // Skip initial fetch if we have SSR data and haven't changed query
-    if (initialData && initialData.data.length > 0 && query.page === 1 && !query.sortBy) return;
+    // Skip the very first mount — table starts empty, data is added via Contract Config.
+    // Subsequent query changes (pagination, sort) still trigger a fetch.
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
     fetchData(query);
-  }, [query, fetchData, initialData]);
+  }, [query, fetchData]);
 
   const retry = useCallback(() => {
     fetchData(query);

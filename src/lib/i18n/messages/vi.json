@@ -4,7 +4,7 @@
     "ethPrice": "Giá ETH",
     "gas": "Gas",
     "gwei": "Gwei",
-    "totalAirdrop": "Tổng số lượng Airdrop Ethereum",
+    "totalTokenFee": "Tổng phí Token",
     "contractConfig": "Cấu hình hợp đồng"
   },
   "table": {
@@ -17,10 +17,12 @@
     "gasLimit": "Giới hạn Gas",
     "airdropQuantity": "Số lượng Airdrop",
     "airdropPercent": "Phần trăm Airdrop",
+    "txCountToday": "Số GD hôm nay",
     "tokenFee": "Phí token",
+    "tokenCost": "Chi phí Token",
     "gasCost": "Phí Gas",
-    "totalCost": "Tổng phí",
-    "averageCost": "Chi phí TB",
+    "totalCost": "Tổng Phí",
+    "averageCost": "Phí TB",
     "cumulativeQuantity": "Số lượng tích lũy",
     "noData": "Không có dữ liệu hợp đồng",
     "errorLoading": "Tải hợp đồng thất bại",

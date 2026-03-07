@@ -7,8 +7,14 @@ export function LocaleSwitcher() {
   const [current, setCurrent] = useState<Locale>('en');
 
   useEffect(() => {
-    // Initialize from URL ?locale= or cookie NEXT_LOCALE
+    // Initialize from pathname (/zh, /vi, /en), then ?locale=, then cookie NEXT_LOCALE
     try {
+      const pathLocale = window.location.pathname.split('/')[1] as Locale | '';
+      if (pathLocale && locales.includes(pathLocale)) {
+        setCurrent(pathLocale);
+        return;
+      }
+
       const urlLocale = new URL(window.location.href).searchParams.get('locale') as Locale | null;
       if (urlLocale && locales.includes(urlLocale)) {
         setCurrent(urlLocale);
@@ -33,10 +39,20 @@ export function LocaleSwitcher() {
     } catch (e) {
       /* ignore */
     }
-    // Also append locale to URL to be robust in environments where cookies are restricted
-    const url = new URL(window.location.href);
-    url.searchParams.set('locale', locale);
-    window.location.href = url.toString();
+    // Prefer route-based locale: preserve the rest of the path when switching
+    try {
+      const pathname = window.location.pathname;
+      const parts = pathname.split('/');
+      const rest = parts.length > 2 ? '/' + parts.slice(2).join('/') : '';
+      const newUrl = `${window.location.origin}/${locale}${rest}${window.location.search}${window.location.hash}`;
+      window.location.href = newUrl;
+      return;
+    } catch (e) {
+      // fallback to query param
+      const url = new URL(window.location.href);
+      url.searchParams.set('locale', locale);
+      window.location.href = url.toString();
+    }
   };
 
   return (

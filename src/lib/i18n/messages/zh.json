@@ -58,5 +58,16 @@
     "error": "出了点问题",
     "tryAgain": "重试",
     "close": "关闭"
+  },
+  "modal": {
+    "title": "合约配置",
+    "contractNumber": "合约编号",
+    "contractNumberPlaceholder": "例：Eth_002",
+    "contractAddress": "合约地址",
+    "contractAddressPlaceholder": "例：0E0252",
+    "gasLimit": "Gas 限额 (gwei)",
+    "gasLimitPlaceholder": "例：0.03",
+    "cancel": "取消",
+    "apply": "应用"
   }
 }

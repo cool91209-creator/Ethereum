@@ -1,7 +1,10 @@
-import { DashboardHeader } from '@/features/dashboard/components/dashboard-header';
-import { DashboardShell } from '@/features/dashboard/components/dashboard-shell';
-import { generateMockDashboardSummary } from '@/mocks/dashboard';
-import { generateMockContractsResponse } from '@/mocks/contracts';
+import { redirect } from 'next/navigation';
+import { defaultLocale } from '@/lib/i18n/config';
+
+// Redirect root to default locale route
+export default function RootPageRedirect() {
+  redirect(`/${defaultLocale}`);
+}
 
 /**
  * Main Dashboard Page - Server Component
@@ -16,32 +19,7 @@ import { generateMockContractsResponse } from '@/mocks/contracts';
  *   const summary = await fetchDashboardSummary();
  *   const contracts = await fetchContracts({ page: 1, pageSize: 20 });
  */
-export default async function DashboardPage() {
-  // SSR: Fetch initial data server-side
-  const summary = generateMockDashboardSummary();
-  // Start with an empty contracts list — rows are added by the Contract Config flow
-  const initialContracts = {
-    data: [],
-    totals: {
-      totalAirdropQuantity: 0,
-      totalTokenFee: 0,
-      totalGasCost: 0,
-      totalCost: 0,
-      totalAverageCost: 0,
-      grandCumulativeQuantity: 0,
-    },
-    pagination: {
-      page: 1,
-      pageSize: 20,
-      total: 0,
-      totalPages: 0,
-    },
-  };
-
-  return (
-    <div className="flex flex-col h-screen">
-      <DashboardHeader summary={summary} />
-      <DashboardShell initialContracts={initialContracts} />
-    </div>
-  );
-}
+/*
+ Dashboard root is a redirect to `/${defaultLocale}`. The actual dashboard page
+ lives under the dynamic locale route at `src/app/[locale]/page.tsx`.
+*/

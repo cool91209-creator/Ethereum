@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface Props {
   open: boolean;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function ContractConfigModal({ open, onClose }: Props) {
+  const t = useTranslations('modal');
   const [contractNumber, setContractNumber] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [gasLimit, setGasLimit] = useState<number | ''>('');
@@ -55,21 +57,21 @@ export function ContractConfigModal({ open, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <form onSubmit={handleSubmit} className="relative bg-white rounded-lg shadow-lg p-6 w-96 z-10">
-        <h3 className="text-lg font-semibold mb-4">Contract Config</h3>
+        <h3 className="text-lg font-semibold mb-4">{t('title')}</h3>
         <div className="space-y-3">
-          <label className="block text-sm">Contract Number</label>
-          <input value={contractNumber} onChange={(e) => setContractNumber(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder="e.g. Eth_002" />
+          <label className="block text-sm">{t('contractNumber')}</label>
+          <input value={contractNumber} onChange={(e) => setContractNumber(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder={t('contractNumberPlaceholder')} />
 
-          <label className="block text-sm">Contract Address</label>
-          <input value={contractAddress} onChange={(e) => setContractAddress(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder="e.g. 0E0252" />
+          <label className="block text-sm">{t('contractAddress')}</label>
+          <input value={contractAddress} onChange={(e) => setContractAddress(e.target.value)} className="w-full border px-3 py-2 rounded" placeholder={t('contractAddressPlaceholder')} />
 
-          <label className="block text-sm">Gas Limit (gwei)</label>
-          <input value={gasLimit} onChange={(e) => setGasLimit(e.target.value === '' ? '' : Number(e.target.value))} type="number" step="0.0001" min="0" className="w-full border px-3 py-2 rounded" placeholder="e.g. 0.03" />
+          <label className="block text-sm">{t('gasLimit')}</label>
+          <input value={gasLimit} onChange={(e) => setGasLimit(e.target.value === '' ? '' : Number(e.target.value))} type="number" step="0.0001" min="0" className="w-full border px-3 py-2 rounded" placeholder={t('gasLimitPlaceholder')} />
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-3 py-1 border rounded">Cancel</button>
-          <button type="submit" className="px-4 py-1 bg-blue-600 text-white rounded" disabled={loading || !contractNumber}>Apply</button>
+          <button type="button" onClick={onClose} className="px-3 py-1 border rounded">{t('cancel')}</button>
+          <button type="submit" className="px-4 py-1 bg-blue-600 text-white rounded" disabled={loading || !contractNumber}>{t('apply')}</button>
         </div>
       </form>
     </div>

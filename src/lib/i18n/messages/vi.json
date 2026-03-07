@@ -58,5 +58,16 @@
     "error": "Đã xảy ra lỗi",
     "tryAgain": "Thử lại",
     "close": "Đóng"
+  },
+  "modal": {
+    "title": "Cấu hình hợp đồng",
+    "contractNumber": "Mã hợp đồng",
+    "contractNumberPlaceholder": "vd: Eth_002",
+    "contractAddress": "Địa chỉ hợp đồng",
+    "contractAddressPlaceholder": "vd: 0E0252",
+    "gasLimit": "Giới hạn Gas (gwei)",
+    "gasLimitPlaceholder": "vd: 0.03",
+    "cancel": "Hủy",
+    "apply": "Áp dụng"
   }
 }

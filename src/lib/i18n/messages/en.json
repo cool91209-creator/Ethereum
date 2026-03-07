@@ -58,5 +58,16 @@
     "error": "Something went wrong",
     "tryAgain": "Try Again",
     "close": "Close"
+  },
+  "modal": {
+    "title": "Contract Config",
+    "contractNumber": "Contract Number",
+    "contractNumberPlaceholder": "e.g. Eth_002",
+    "contractAddress": "Contract Address",
+    "contractAddressPlaceholder": "e.g. 0E0252",
+    "gasLimit": "Gas Limit (gwei)",
+    "gasLimitPlaceholder": "e.g. 0.03",
+    "cancel": "Cancel",
+    "apply": "Apply"
   }
 }

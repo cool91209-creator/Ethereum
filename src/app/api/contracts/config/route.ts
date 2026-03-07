@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:4000';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    // In a real backend we'd persist changes; here we echo back for client-side handling.
-    return NextResponse.json({ ok: true, body });
-  } catch (err) {
-    return NextResponse.json({ ok: false, message: 'Invalid body' }, { status: 400 });
+    const res = await fetch(`${BACKEND_URL}/api/contracts/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return NextResponse.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to reach backend' },
+      { status: 502 }
+    );
   }
 }

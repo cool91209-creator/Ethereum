@@ -36,7 +36,8 @@ export function useContracts(initialData?: ContractsResponse) {
         ...(q.sortOrder ? { sortOrder: q.sortOrder } : {}),
       });
 
-      const res = await fetch(`/api/contracts?${params}`);
+      // Route through Next.js proxy rewrite → Express backend
+      const res = await fetch(`/api/proxy/contracts?${params}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: ContractsResponse = await res.json();
 
@@ -62,7 +63,7 @@ export function useContracts(initialData?: ContractsResponse) {
 
   useEffect(() => {
     // Skip initial fetch if we have SSR data and haven't changed query
-    if (initialData && query.page === 1 && !query.sortBy) return;
+    if (initialData && initialData.data.length > 0 && query.page === 1 && !query.sortBy) return;
     fetchData(query);
   }, [query, fetchData, initialData]);
 

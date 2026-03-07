@@ -1,5 +1,6 @@
 import { pool } from '../db/pool';
 import type { MetricsBucket, MetricsHistoryResponse } from '../types';
+import type { RowDataPacket } from 'mysql2';
 
 const USE_MOCK = process.env.USE_MOCK_DATA !== 'false';
 
@@ -29,20 +30,20 @@ export async function getMetricsHistory(page: number, pageSize: number): Promise
   }
 
   const offset = (page - 1) * pageSize;
-  const [dataResult, countResult] = await Promise.all([
-    pool.query(
+  const [[dataRows], [countRows]] = await Promise.all([
+    pool.query<RowDataPacket[]>(
       `SELECT hour, primary_value, secondary_value, primary_gas, secondary_gas
        FROM metrics_buckets
        ORDER BY hour ASC
-       LIMIT $1 OFFSET $2`,
+       LIMIT ? OFFSET ?`,
       [pageSize, offset]
     ),
-    pool.query(`SELECT COUNT(*)::int AS total FROM metrics_buckets`),
+    pool.query<RowDataPacket[]>(`SELECT COUNT(*) AS total FROM metrics_buckets`),
   ]);
 
-  const total = countResult.rows[0].total as number;
-  const data: MetricsBucket[] = (dataResult.rows as Record<string, unknown>[]).map((r) => ({
-    hour:           String(r['hour']),
+  const total = Number(countRows[0].total);
+  const data: MetricsBucket[] = dataRows.map((r: RowDataPacket) => ({
+    hour:           String(r['hour']).trim(),
     primaryValue:   Number(r['primary_value']),
     secondaryValue: Number(r['secondary_value']),
     primaryGas:     Number(r['primary_gas']),

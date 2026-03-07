@@ -28,22 +28,20 @@ export function ContractConfigModal({ open, onClose }: Props) {
     };
 
     try {
-      await fetch('/api/contracts/config', {
+      // Send to Express backend via Next.js proxy
+      await fetch('/api/proxy/contracts/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      // Update local UI immediately: apply contractAddress and gasLimit to matching contract
-      window.dispatchEvent(
-        new CustomEvent('contracts:update', {
-          detail: { contractNumber, updates: { contractAddress: payload.contractAddress, gasLimit: payload.gasLimit } },
-        })
-      );
-
-      // Optionally trigger a refresh
+      // Trigger table refresh to reload real data from backend
       window.dispatchEvent(new Event('contracts:refresh'));
 
+      // Reset form
+      setContractNumber('');
+      setContractAddress('');
+      setGasLimit('');
       onClose();
     } catch (err) {
       console.error(err);

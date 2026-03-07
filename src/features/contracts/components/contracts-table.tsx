@@ -17,6 +17,28 @@ import { ErrorDisplay } from '@/components/ui/error-display';
 import { ContractsTableSkeleton } from './contracts-table-skeleton';
 import { ContractStatusBadge } from './contract-status-badge';
 
+const EyeIcon = () => (
+  <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  </button>
+);
+
+function formatActivationTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${mm}${dd}/${hh}:${min}`;
+  } catch {
+    return iso;
+  }
+}
+
 interface ContractsTableProps {
   initialData?: ContractsResponse;
   onSelectContract?: (contract: Contract) => void;
@@ -57,24 +79,15 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
       {
         accessorKey: 'activationTime',
         header: t('activationTime'),
+        cell: ({ row }) => formatActivationTime(row.original.activationTime),
         size: 110,
-      },
-      {
-        accessorKey: 'contractAddress',
-        header: t('contractAddress'),
-        size: 100,
       },
       {
         accessorKey: 'contractStatus',
         header: () => (
           <div className="flex items-center gap-1">
             {t('contractStatus')}
-            <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
+            <EyeIcon />
           </div>
         ),
         cell: ({ row }) => <ContractStatusBadge status={row.original.contractStatus} />,
@@ -85,23 +98,13 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         header: () => (
           <div className="flex items-center gap-1">
             {t('deliveryStrategy')}
-            <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
+            <EyeIcon />
           </div>
         ),
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
             <span className="text-blue-500 font-medium">{row.original.deliveryStrategy}</span>
-            <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
+            <EyeIcon />
           </div>
         ),
         size: 100,
@@ -111,23 +114,13 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         header: () => (
           <div className="flex items-center gap-1">
             {t('gasLimit')}
-            <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
+            <EyeIcon />
           </div>
         ),
         cell: ({ row }) => (
           <div className="flex items-center gap-1">
             <span>{typeof row.original.gasLimit === 'number' ? `${row.original.gasLimit}gwei` : row.original.gasLimit}</span>
-            <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
+            <EyeIcon />
           </div>
         ),
         size: 100,
@@ -137,28 +130,16 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         header: () => (
           <div className="flex items-center gap-1">
             {t('airdropQuantity')}
-            <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
+            <EyeIcon />
           </div>
         ),
-        size: 140,
-      },
-      // Percentage column computed from row value vs totals
-      {
-        id: 'airdropPercent',
-        header: () => <div className="text-xs text-gray-500">{t('airdropPercent')}</div>,
         cell: ({ row }) => {
           const qty = Number(row.original.airdropQuantity ?? 0);
           const total = totals?.totalAirdropQuantity ?? 0;
-          if (!total) return '—';
-          const pct = (qty / total) * 100;
-          return `${pct.toFixed(2)}%`;
+          const pct = total > 0 ? ((qty / total) * 100).toFixed(0) : '?';
+          return `${(qty * 2).toLocaleString()}/${qty.toLocaleString()}/${pct}%`;
         },
-        size: 100,
+        size: 160,
       },
       {
         accessorKey: 'tokenFee',
@@ -201,6 +182,7 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
   // Sync when upstream contracts change (e.g., refetch)
   useEffect(() => setLocalContracts(contracts), [contracts]);
   useEffect(() => setLocalTotals(totals ?? null), [totals]);
+
   const table = useReactTable({
     data: localContracts,
     columns,
@@ -215,17 +197,6 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
     enableRowSelection: true,
   });
 
-  if (isLoading && contracts.length === 0) {
-    return <ContractsTableSkeleton />;
-  }
-
-  if (error) {
-    return <ErrorDisplay message={error.message} onRetry={retry} />;
-  }
-
-  // When there is no data yet, we still render the table headers so the layout is stable.
-  // Rows will show as empty placeholders until data is added via the Contract Config flow.
-
   // Listen for external updates (e.g., Contract Config submit)
   useEffect(() => {
     function onUpdate(e: Event) {
@@ -238,21 +209,19 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
           const updated = prev.map((c) =>
             c.contractNumber === detail.contractNumber ? { ...c, ...(detail.updates ?? {}) } : c
           );
-          // update local totals
           setLocalTotals(calcTotals(updated));
           return updated;
         }
 
-        // create a new contract row using provided updates and sensible defaults
         const nextSerial = prev.length + 1;
         const now = new Date();
-        const activationTime = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const activationTime = now.toISOString();
         const newRow: Contract = {
           id: `local-${Date.now()}`,
           serialNumber: nextSerial,
-          contractNumber: detail.contractNumber,
+          contractNumber: detail.contractNumber!,
           activationTime,
-          contractAddress: (detail.updates?.contractAddress as string) ?? '',
+          contractAddress: String(detail.updates?.contractAddress ?? ''),
           contractStatus: 'preparing',
           deliveryStrategy: '1+2+3',
           gasLimit: (detail.updates?.gasLimit as number) ?? 0,
@@ -296,6 +265,14 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
       totalAverageCost: totalCost ? totalCost / Math.max(1, totalAirdropQuantity) : 0,
       grandCumulativeQuantity,
     };
+  }
+
+  if (isLoading && contracts.length === 0) {
+    return <ContractsTableSkeleton />;
+  }
+
+  if (error) {
+    return <ErrorDisplay message={error.message} onRetry={retry} />;
   }
 
   return (
@@ -346,12 +323,10 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
                 </tr>
               ))
             ) : (
-              // Render placeholder empty rows to keep the table structure visible
               Array.from({ length: 5 }).map((_, rIdx) => (
                 <tr key={`empty-${rIdx}`} className="border-b border-eth-border">
-                  {columns.map((col, cIdx) => (
+                  {columns.map((_, cIdx) => (
                     <td key={`empty-${rIdx}-${cIdx}`} className="px-3 py-2.5 whitespace-nowrap text-gray-400">
-                      {/* leave blank value for user to fill later */}
                       &nbsp;
                     </td>
                   ))}

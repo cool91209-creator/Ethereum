@@ -9,16 +9,16 @@ import type { ApiError, ApiResponse } from '@/types';
  * 3. The client will automatically route through Next.js proxy rewrites
  */
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 const TIMEOUT = Number(process.env.NEXT_PUBLIC_API_TIMEOUT) || 10000;
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false';
 
 function getApiUrl(path: string): string {
-  // In mock mode, call local API routes directly
+  // In mock mode, call local Next.js API routes directly
   if (USE_MOCKS) {
     return `${BASE_URL}${path}`;
   }
-  // In production, route through the proxy rewrite
+  // Route through the Next.js proxy rewrite to Express backend
   return `${BASE_URL}/api/proxy${path.replace('/api', '')}`;
 }
 

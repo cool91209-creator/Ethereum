@@ -1,38 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { contractsQuerySchema } from '@/lib/schemas/contracts';
-import { generateMockContractsResponse } from '@/mocks/contracts';
 
-/**
- * GET /api/contracts
- *
- * BACKEND INTEGRATION:
- * Replace the mock generator with a call to your real backend.
- * Keep the Zod validation for request params.
- */
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:4000';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const query = contractsQuerySchema.parse({
-      page: searchParams.get('page') ?? undefined,
-      pageSize: searchParams.get('pageSize') ?? undefined,
-      sortBy: searchParams.get('sortBy') ?? undefined,
-      sortOrder: searchParams.get('sortOrder') ?? undefined,
+    const res = await fetch(`${BACKEND_URL}/api/contracts?${searchParams}`, {
+      cache: 'no-store',
     });
-
-    // TODO: Replace with real backend call
-    const data = generateMockContractsResponse(query.page, query.pageSize);
-
-    return NextResponse.json(data);
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json(
-        { code: 'VALIDATION_ERROR', message: 'Invalid query parameters' },
-        { status: 400 }
-      );
-    }
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch {
     return NextResponse.json(
-      { code: 'INTERNAL_ERROR', message: 'Internal server error' },
-      { status: 500 }
+      { code: 'INTERNAL_ERROR', message: 'Failed to reach backend' },
+      { status: 502 }
     );
   }
 }

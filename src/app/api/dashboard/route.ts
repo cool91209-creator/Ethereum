@@ -1,21 +1,18 @@
 import { NextResponse } from 'next/server';
-import { generateMockDashboardSummary } from '@/mocks/dashboard';
 
-/**
- * GET /api/dashboard
- *
- * BACKEND INTEGRATION:
- * Replace the mock generator with a call to your real dashboard summary endpoint.
- */
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:4000';
+
 export async function GET() {
   try {
-    // TODO: Replace with real backend call
-    const data = generateMockDashboardSummary();
-    return NextResponse.json(data);
+    const res = await fetch(`${BACKEND_URL}/api/dashboard`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch {
     return NextResponse.json(
-      { code: 'INTERNAL_ERROR', message: 'Internal server error' },
-      { status: 500 }
+      { code: 'INTERNAL_ERROR', message: 'Failed to reach backend' },
+      { status: 502 }
     );
   }
 }

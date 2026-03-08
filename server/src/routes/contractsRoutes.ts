@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listContracts, getContract, configureContract, deleteContractById } from '../controllers/contractsController';
+import { listContracts, getContract, configureContract, deleteContractById, refreshContracts } from '../controllers/contractsController';
 import { getStats } from '../controllers/statsController';
 
 const router = Router();
@@ -18,5 +18,8 @@ router.post('/config', configureContract);
 
 // DELETE /api/contracts/:id
 router.delete('/:id', deleteContractById);
+
+// POST /api/contracts/refresh  — re-fetch live Etherscan data for all rows
+router.post('/refresh', refreshContracts);
 
 export default router;

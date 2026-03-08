@@ -7,8 +7,7 @@ import type {
 } from '../types';
 import {
   getContractTodayTransfers,
-  getAddressTodayTokenTransfers,
-  getTokenTxCountForContract,
+  sampleWalletTokenTransfers,
   getTokenInfo,
   getEthPrice,
   getGasOracle,
@@ -227,147 +226,220 @@ export function deleteContract(id: string): boolean {
   return true;
 }
 
-export async function applyContractConfig(payload: ContractConfigPayload): Promise<void> {
-  const addr = payload.contractAddress.toLowerCase();
+// ─── Live data fetcher (shared by applyContractConfig and refreshSingleContract) ──
 
-  // Remove existing entry for same address (if any) before re-fetching
-  // Save any existing entry so we can restore it if validation fails
-  const existingEntry = cachedContracts.find(c => c.contractAddress === addr) ?? null;
-  cachedContracts = cachedContracts.filter(c => c.contractAddress !== addr);
+interface LiveData {
+  isWalletMode: boolean;
+  tokenContractAddr: string;
+  tokenSymbol: string;
+  tokenPriceUsd: number;
+  txCountToday: number;
+  txCountYesterday: number;
+  airdropToday: number;
+  airdropYesterday: number;
+  gasCostUsd: number;
+  tokenFeeUsd: number;
+  totalCost: number;
+  networkGasPriceGwei: number;
+}
 
-  console.log(`[contractsService] Contract Config: fetching data for ${addr} (${payload.contractNumber})...`);
-
-  // 1. Block boundaries + ETH price + Gas Oracle
-  // Rate limiting is handled globally in etherscanRequest (250ms between calls)
-  const nowDate = new Date();
-  const todayStartTs = Math.floor(Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate()) / 1000);
+async function fetchLiveData(addr: string, fallbackSymbol = ''): Promise<LiveData> {
+  // Use GMT+7 midnight as day boundaries to match what users see in block explorers.
+  // GMT+7 = UTC+25200s. Floor current time (in GMT+7) to the nearest day to get today's start.
+  const GMT7_OFFSET_SEC = 7 * 3600; // 25200
+  const nowTs           = Math.floor(Date.now() / 1000);
+  const nowGmt7         = nowTs + GMT7_OFFSET_SEC;
+  const todayStartTs    = Math.floor(nowGmt7 / 86400) * 86400 - GMT7_OFFSET_SEC; // GMT+7 midnight in UTC
   const yesterdayStartTs = todayStartTs - 86400;
-  console.log(`[contractsService] Date boundaries: today=${new Date(todayStartTs * 1000).toISOString()}, yesterday=${new Date(yesterdayStartTs * 1000).toISOString()}`);
+  console.log(`[fetchLiveData] GMT+7 today starts at UTC ${new Date(todayStartTs * 1000).toISOString()}`);
 
   const yesterdayBlock = await getBlockByTimestamp(yesterdayStartTs, 'after');
-  console.log(`[contractsService] yesterdayBlock=${yesterdayBlock}`);
+  const todayBlock     = await getBlockByTimestamp(todayStartTs, 'after');
+  const ethPriceData   = await getEthPrice();
+  const gasOracleData  = await getGasOracle();
 
-  const todayBlock = await getBlockByTimestamp(todayStartTs, 'after');
-  console.log(`[contractsService] todayBlock=${todayBlock}`);
+  // Detect mode by sampling the most recent 50 ERC-20 transfers (no time restriction).
+  // This always works even when the wallet had no activity today.
+  // "wallet mode"  = addr participates in transfers of tokens ≠ addr → it sends tokens itself
+  // "token mode"   = addr IS the ERC-20 token contract; WATCH_ADDRESS sends it
+  const sample             = await sampleWalletTokenTransfers(addr);
+  const otherTokenActivity = sample.filter(t => t.contractAddress.toLowerCase() !== addr.toLowerCase());
+  console.log(`[fetchLiveData] ${addr}: sample=${sample.length}, otherTokenActivity=${otherTokenActivity.length}`);
 
-  const ethPriceData = await getEthPrice();
-  console.log(`[contractsService] ETH price=$${ethPriceData.ethusd}`);
-
-  const gasOracleData = await getGasOracle();
-  console.log(`[contractsService] Gas=${gasOracleData.ProposeGasPrice} gwei`);
-
-  // 2. Detect if addr is an ERC-20 token contract or a wallet address (EOA)
-  const isTokenContract = await getTokenTxCountForContract(addr);
-  console.log(`[contractsService] ${addr}: isTokenContract=${isTokenContract}`);
-
-  // 3. Fetch transfers using the correct mode
   let rawYesterdayTxs: TokenTransfer[];
   let rawTodayTxs: TokenTransfer[];
-  if (isTokenContract) {
-    // addr is an ERC-20 token → fetch transfers of this token involving WATCH_ADDRESS
-    rawYesterdayTxs = await getContractTodayTransfers(addr, WATCH_ADDRESS, yesterdayBlock, yesterdayStartTs);
-    rawTodayTxs = await getContractTodayTransfers(addr, WATCH_ADDRESS, todayBlock, todayStartTs);
+  let tokenContractAddr = addr;
+  let isWalletMode = false;
+
+  if (otherTokenActivity.length > 0) {
+    isWalletMode = true;
+    const outCounts   = new Map<string, number>();
+    const totalCounts = new Map<string, number>();
+    for (const t of otherTokenActivity) {
+      const ca = t.contractAddress.toLowerCase();
+      totalCounts.set(ca, (totalCounts.get(ca) || 0) + 1);
+      if (t.from.toLowerCase() === addr.toLowerCase())
+        outCounts.set(ca, (outCounts.get(ca) || 0) + 1);
+    }
+    let maxOut = 0;
+    for (const [ca, count] of outCounts)   { if (count > maxOut)   { maxOut = count; tokenContractAddr = ca; } }
+    if (!maxOut) {
+      let maxTotal = 0;
+      for (const [ca, count] of totalCounts) { if (count > maxTotal) { maxTotal = count; tokenContractAddr = ca; } }
+      console.log(`[fetchLiveData] wallet mode — dominant token (by total, from=0): ${tokenContractAddr}`);
+    } else {
+      console.log(`[fetchLiveData] wallet mode — dominant outgoing token: ${tokenContractAddr} (${maxOut} sample txs)`);
+    }
+    rawYesterdayTxs = await getContractTodayTransfers(tokenContractAddr, addr, yesterdayBlock, yesterdayStartTs);
+    rawTodayTxs     = await getContractTodayTransfers(tokenContractAddr, addr, todayBlock, todayStartTs);
   } else {
-    // addr is a wallet address → fetch all ERC-20 transfers from this wallet
-    rawYesterdayTxs = await getAddressTodayTokenTransfers(addr, yesterdayBlock, yesterdayStartTs);
-    rawTodayTxs = await getAddressTodayTokenTransfers(addr, todayBlock, todayStartTs);
+    console.log(`[fetchLiveData] token mode — querying ${addr} × WATCH_ADDRESS`);
+    rawYesterdayTxs = await getContractTodayTransfers(addr, WATCH_ADDRESS, yesterdayBlock, yesterdayStartTs);
+    rawTodayTxs     = await getContractTodayTransfers(addr, WATCH_ADDRESS, todayBlock, todayStartTs);
   }
 
   const yesterdayOnly = rawYesterdayTxs.filter(t => {
     const ts = parseInt(t.timeStamp);
     return ts >= yesterdayStartTs && ts < todayStartTs;
   });
-  console.log(`[contractsService] Yesterday raw=${rawYesterdayTxs.length}, filtered=${yesterdayOnly.length}`);
-  console.log(`[contractsService] Today txs=${rawTodayTxs.length}`);
+  console.log(`[fetchLiveData] today=${rawTodayTxs.length}, yesterday=${yesterdayOnly.length}`);
 
-  // Outgoing = sent FROM the monitored source (WATCH_ADDRESS for token mode, addr for wallet mode)
-  const watchAddr = isTokenContract ? WATCH_ADDRESS.toLowerCase() : addr.toLowerCase();
-  let outgoingToday = rawTodayTxs.filter(t => t.from.toLowerCase() === watchAddr);
-  let outgoingYesterday = yesterdayOnly.filter(t => t.from.toLowerCase() === watchAddr);
+  const addrLower  = addr.toLowerCase();
+  const watchAddr  = isWalletMode ? addrLower : WATCH_ADDRESS.toLowerCase();
 
-  // For wallet mode: find the dominant outgoing token (most txs today) and narrow to it
-  let tokenContractAddr = addr;
-  if (!isTokenContract && outgoingToday.length > 0) {
-    const tokenCounts = new Map<string, number>();
-    for (const t of outgoingToday) {
-      const ca = t.contractAddress.toLowerCase();
-      tokenCounts.set(ca, (tokenCounts.get(ca) || 0) + 1);
-    }
-    let maxCount = 0;
-    for (const [ca, count] of tokenCounts) {
-      if (count > maxCount) { maxCount = count; tokenContractAddr = ca; }
-    }
-    outgoingToday = outgoingToday.filter(t => t.contractAddress.toLowerCase() === tokenContractAddr);
-    outgoingYesterday = outgoingYesterday.filter(t => t.contractAddress.toLowerCase() === tokenContractAddr);
-    console.log(`[contractsService] Wallet mode — dominant token: ${tokenContractAddr} (${maxCount} txs today)`);
-  }
+  // Check from-filter across ALL raw data (today + yesterday).
+  // Etherscan tx.from = tx initiator, not ERC-20 Transfer "from". If wallet sends via
+  // an intermediate contract, from≠wallet everywhere → use to≠addr fallback for both days.
+  const allRaw         = [...rawTodayTxs, ...yesterdayOnly];
+  const fromFilterHits = allRaw.filter(t => t.from.toLowerCase() === watchAddr).length;
+  const useToFallback  = isWalletMode && fromFilterHits === 0 && allRaw.length > 0;
+  if (useToFallback) console.warn(`[fetchLiveData] from-filter=0 in wallet mode — using to≠addr fallback`);
 
-  const allOutgoing = [...outgoingToday, ...outgoingYesterday];
-  const firstTx = allOutgoing.length > 0 ? allOutgoing[allOutgoing.length - 1] : null; // oldest
+  const outgoingToday     = useToFallback
+    ? rawTodayTxs.filter(t => t.to.toLowerCase() !== addrLower)
+    : rawTodayTxs.filter(t => t.from.toLowerCase() === watchAddr);
+  const outgoingYesterday = useToFallback
+    ? yesterdayOnly.filter(t => t.to.toLowerCase() !== addrLower)
+    : yesterdayOnly.filter(t => t.from.toLowerCase() === watchAddr);
+
+  const allOutgoing  = [...outgoingToday, ...outgoingYesterday];
+  const firstTx      = allOutgoing.length > 0 ? allOutgoing[allOutgoing.length - 1] : null;
   const tokenDecimal = firstTx ? parseInt(firstTx.tokenDecimal) || 18 : 18;
-  const rawSymbol = firstTx?.tokenSymbol || '';
-  const tokenSymbol = rawSymbol || (await getTokenInfo(tokenContractAddr))?.symbol || '';
+  const rawSymbol    = firstTx?.tokenSymbol || '';
+  const tokenSymbol  = rawSymbol || fallbackSymbol || (await getTokenInfo(tokenContractAddr))?.symbol || '';
 
-  // 4. Token price from DeFi Llama
-  const tokenPrices = await getTokenPricesUsd([tokenContractAddr]);
+  const tokenPrices  = await getTokenPricesUsd([tokenContractAddr]);
   const tokenPriceUsd = tokenPrices.get(tokenContractAddr) || 0;
 
-  const todayAmount = outgoingToday.reduce((s, t) => s + parseFloat(t.value) / Math.pow(10, tokenDecimal), 0);
+  const todayAmount     = outgoingToday.reduce((s, t) => s + parseFloat(t.value) / Math.pow(10, tokenDecimal), 0);
   const yesterdayAmount = outgoingYesterday.reduce((s, t) => s + parseFloat(t.value) / Math.pow(10, tokenDecimal), 0);
-  const totalAmount = todayAmount + yesterdayAmount;
 
-  const txCountToday = outgoingToday.length;
-  const txCountYesterday = outgoingYesterday.length;
+  // Count only non-zero-value transfers (mirrors explorer "Hide zero-amount transfers")
+  const txCountToday     = outgoingToday.filter(t => t.value !== '0').length;
+  const txCountYesterday = outgoingYesterday.filter(t => t.value !== '0').length;
+  console.log(`[fetchLiveData] txToday=${txCountToday} (raw=${outgoingToday.length}), txYesterday=${txCountYesterday}`);
 
   const tokenFeeUsd = todayAmount * tokenPriceUsd;
-
-  // Gas cost: wallet mode sums ALL outgoing txs (all tokens); token mode uses only this token's txs
-  const gasCostTxs = isTokenContract
-    ? outgoingToday
-    : rawTodayTxs.filter(t => t.from.toLowerCase() === addr.toLowerCase());
-  const gasCostEth = gasCostTxs.reduce((s, t) => {
-    return s + (parseFloat(t.gasUsed) * parseFloat(t.gasPrice)) / 1e18;
-  }, 0);
+  const gasCostEth  = outgoingToday.reduce((s, t) => s + (parseFloat(t.gasUsed) * parseFloat(t.gasPrice)) / 1e18, 0);
   const ethPriceUsd = parseFloat(ethPriceData.ethusd) || 0;
-  const gasCostUsd = gasCostEth * ethPriceUsd;
+  const gasCostUsd  = gasCostEth * ethPriceUsd;
+  const totalCost   = tokenFeeUsd + gasCostUsd;
 
-  const totalCost = tokenFeeUsd + gasCostUsd;
-  const airdropToday = Math.round(todayAmount);
-  const airdropYesterday = Math.round(yesterdayAmount);
+  return {
+    isWalletMode,
+    tokenContractAddr,
+    tokenSymbol,
+    tokenPriceUsd,
+    txCountToday,
+    txCountYesterday,
+    airdropToday:     Math.round(todayAmount),
+    airdropYesterday: Math.round(yesterdayAmount),
+    gasCostUsd,
+    tokenFeeUsd,
+    totalCost,
+    networkGasPriceGwei: parseFloat(gasOracleData.ProposeGasPrice) || 0,
+  };
+}
 
-  const networkGasPriceGwei = parseFloat(gasOracleData.ProposeGasPrice) || 0;
-  const activationDate = firstTx ? new Date(parseInt(firstTx.timeStamp) * 1000) : new Date();
+// ─── Apply Contract Config ────────────────────────────────────────────────────
 
-  // Determine serial number: max existing + 1
+export async function applyContractConfig(payload: ContractConfigPayload): Promise<void> {
+  const addr = payload.contractAddress.toLowerCase();
+  cachedContracts = cachedContracts.filter(c => c.contractAddress !== addr);
+  console.log(`[contractsService] Contract Config: fetching live data for ${addr} (${payload.contractNumber})...`);
+
+  const live = await fetchLiveData(addr);
+
   const maxSerial = cachedContracts.reduce((m, c) => Math.max(m, c.serialNumber), 0);
-  const serial = maxSerial + 1;
+  const serial    = maxSerial + 1;
 
-  const contract: Contract = {
+  cachedContracts.push({
     id: String(serial),
     serialNumber: serial,
-    contractNumber: payload.contractNumber || `Eth${String(serial).padStart(3, '0')}`,
-    activationTime: activationDate.toISOString(),
+    contractNumber:  payload.contractNumber || `Eth${String(serial).padStart(3, '0')}`,
+    activationTime:  new Date().toISOString(),
     contractAddress: addr,
-    contractStatus: txCountToday > 0 ? 'running' : 'stopped',
-    tokenSymbol,
+    contractStatus:  live.txCountToday > 0 ? 'running' : 'stopped',
+    tokenSymbol:     live.tokenSymbol,
     deliveryStrategy: '1+2+3',
-    gasLimit: parseFloat(networkGasPriceGwei.toFixed(2)),
-    airdropQuantity: Math.round(totalAmount),
-    airdropYesterday,
-    airdropToday,
-    tokenFee: parseFloat(tokenFeeUsd.toFixed(2)),
-    tokenAmount: airdropToday,
-    tokenWalletAmount: airdropToday,
+    gasLimit:         parseFloat(live.networkGasPriceGwei.toFixed(2)),
+    airdropQuantity:  live.airdropToday + live.airdropYesterday,
+    airdropYesterday: live.airdropYesterday,
+    airdropToday:     live.airdropToday,
+    tokenFee:         parseFloat(live.tokenFeeUsd.toFixed(2)),
+    tokenAmount:      live.airdropToday,
+    tokenWalletAmount: live.airdropToday,
     tokenContractAmount: 0,
-    tokenPrice: parseFloat(tokenPriceUsd.toFixed(10)),
-    txCountYesterday,
-    txCountToday,
-    gasCost: parseFloat(gasCostUsd.toFixed(2)),
-    totalCost: parseFloat(totalCost.toFixed(2)),
-    averageCost: airdropToday > 0 ? parseFloat((totalCost / airdropToday).toFixed(6)) : 0,
-    cumulativeQuantity: txCountYesterday + txCountToday,
-  };
+    tokenPrice:       parseFloat(live.tokenPriceUsd.toFixed(10)),
+    txCountYesterday: live.txCountYesterday,
+    txCountToday:     live.txCountToday,
+    gasCost:          parseFloat(live.gasCostUsd.toFixed(2)),
+    totalCost:        parseFloat(live.totalCost.toFixed(2)),
+    averageCost:      live.airdropToday > 0 ? parseFloat((live.totalCost / live.airdropToday).toFixed(6)) : 0,
+    cumulativeQuantity: live.txCountYesterday + live.txCountToday,
+  });
+  console.log(`[contractsService] Added ${addr} (${live.tokenSymbol}), ${live.txCountToday} txs today [${live.isWalletMode ? 'wallet' : 'token'} mode]`);
+}
 
-  cachedContracts.push(contract);
-  console.log(`[contractsService] Contract Config: added ${addr} (${tokenSymbol}), ${txCountToday} txs today, ${airdropToday} tokens${!isTokenContract ? ' [wallet mode]' : ''}`);
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+
+async function refreshSingleContract(contract: Contract): Promise<void> {
+  const addr = contract.contractAddress.toLowerCase();
+  const live = await fetchLiveData(addr, contract.tokenSymbol);
+  const idx  = cachedContracts.findIndex(c => c.id === contract.id);
+  if (idx === -1) return; // deleted while refreshing
+  cachedContracts[idx] = {
+    ...cachedContracts[idx],
+    contractStatus:    live.txCountToday > 0 ? 'running' : 'stopped',
+    tokenSymbol:       live.tokenSymbol || cachedContracts[idx].tokenSymbol,
+    gasLimit:          parseFloat(live.networkGasPriceGwei.toFixed(2)),
+    airdropQuantity:   live.airdropToday + live.airdropYesterday,
+    airdropYesterday:  live.airdropYesterday,
+    airdropToday:      live.airdropToday,
+    tokenFee:          parseFloat(live.tokenFeeUsd.toFixed(2)),
+    tokenAmount:       live.airdropToday,
+    tokenWalletAmount: live.airdropToday,
+    tokenPrice:        parseFloat(live.tokenPriceUsd.toFixed(10)),
+    txCountYesterday:  live.txCountYesterday,
+    txCountToday:      live.txCountToday,
+    gasCost:           parseFloat(live.gasCostUsd.toFixed(2)),
+    totalCost:         parseFloat(live.totalCost.toFixed(2)),
+    averageCost:       live.airdropToday > 0 ? parseFloat((live.totalCost / live.airdropToday).toFixed(6)) : 0,
+    cumulativeQuantity: live.txCountYesterday + live.txCountToday,
+  };
+  console.log(`[contractsService] Refreshed ${addr}: ${live.txCountToday} txs today, ${live.airdropToday} tokens`);
+}
+
+export async function refreshAllContracts(): Promise<void> {
+  if (cachedContracts.length === 0) return;
+  console.log(`[contractsService] Auto-refresh: updating ${cachedContracts.length} contract(s)...`);
+  const snapshot = [...cachedContracts];
+  for (const c of snapshot) {
+    try {
+      await refreshSingleContract(c);
+    } catch (err) {
+      console.error(`[contractsService] Refresh failed for ${c.contractAddress}: ${err}`);
+    }
+  }
+  console.log(`[contractsService] Auto-refresh complete.`);
 }

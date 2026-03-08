@@ -2,6 +2,16 @@ import type { Request, Response } from 'express';
 import * as contractsService from '../services/contractsService';
 import type { ContractConfigPayload } from '../types';
 
+export async function refreshContracts(req: Request, res: Response): Promise<void> {
+  try {
+    await contractsService.refreshAllContracts();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[refreshContracts]', err);
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to refresh contracts' });
+  }
+}
+
 export async function listContracts(req: Request, res: Response): Promise<void> {
   try {
     const page     = Math.max(1, Number(req.query['page'])     || 1);

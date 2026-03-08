@@ -241,6 +241,25 @@ export async function getContractTodayTransfers(
 }
 
 /**
+ * Sample the 50 most recent ERC-20 transfers for a wallet (no time restriction).
+ * Used purely to detect whether an address is a wallet (sends other tokens) or a token contract.
+ * No startblock — always returns data even when the wallet had no activity today.
+ */
+export async function sampleWalletTokenTransfers(
+  walletAddress: string
+): Promise<TokenTransfer[]> {
+  const result = await etherscanRequest({
+    module: 'account',
+    action: 'tokentx',
+    address: walletAddress,
+    page: '1',
+    offset: '50',
+    sort: 'desc',
+  });
+  return Array.isArray(result) ? result as TokenTransfer[] : [];
+}
+
+/**
  * Fetch ALL token transfers (any token) sent FROM or TO a wallet address today.
  * Does NOT filter by contractaddress — the token is identified from the results.
  * Rate limiting is handled globally by throttle() in etherscanRequest.

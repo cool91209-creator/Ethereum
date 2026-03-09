@@ -42,18 +42,24 @@ export function ContractConfigModal({ open, onClose }: Props) {
         return;
       }
 
-      setStatusMsg('Contract added successfully!');
+      setStatusMsg('Contract data is being fetched from Etherscan...');
 
       // Trigger table refresh to reload data from backend
       window.dispatchEvent(new Event('contracts:refresh'));
 
-      // Reset form after short delay so user sees the success message
+      // Keep polling for the new contract to appear (background fetch may take 30-60s)
+      const pollInterval = setInterval(() => {
+        window.dispatchEvent(new Event('contracts:refresh'));
+      }, 3000);
+
+      // Stop polling and close after 60s max
       setTimeout(() => {
+        clearInterval(pollInterval);
         setContractNumber('');
         setContractAddress('');
         setStatusMsg('');
         onClose();
-      }, 800);
+      }, 5000);
     } catch (err) {
       console.error(err);
       setStatusMsg('Network error — could not reach backend');

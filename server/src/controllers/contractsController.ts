@@ -87,8 +87,14 @@ export async function configureContract(req: Request, res: Response): Promise<vo
       return;
     }
 
-    await contractsService.applyContractConfig(body);
+    // Respond immediately — Etherscan fetch can take 30-60s for high-volume wallets.
+    // The frontend auto-refresh (200ms interval event) will pick up the new contract once ready.
     res.json({ success: true });
+
+    // Fetch data in the background
+    contractsService.applyContractConfig(body).catch(err => {
+      console.error('[configureContract] background fetch failed:', err);
+    });
   } catch (err) {
     console.error('[configureContract]', err);
     const message = err instanceof Error ? err.message : 'Failed to apply contract config';

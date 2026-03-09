@@ -51,12 +51,7 @@ export function DashboardHeader({ summary }: DashboardHeaderProps) {
         <LocaleSwitcher />
       </div>
 
-      {/* Total Token Fee */}
-      <div className="text-right">
-        <span className="text-lg font-bold text-gray-900">
-          {t('totalTokenFee')}：${(summary.totalTokenFee ?? 0).toFixed(2)}
-        </span>
-      </div>
+      <div />
     </header>
   );
 }

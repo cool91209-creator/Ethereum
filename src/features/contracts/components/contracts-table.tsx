@@ -13,19 +13,11 @@ import {
 } from '@tanstack/react-table';
 import type { Contract, ContractsResponse, ContractTotals } from '@/types';
 import { useContracts } from '@/lib/hooks/use-contracts';
-import { deleteContract } from '@/lib/api/contracts';
+import { deleteContract, updateContract } from '@/lib/api/contracts';
 import { ErrorDisplay } from '@/components/ui/error-display';
 import { ContractsTableSkeleton } from './contracts-table-skeleton';
 import { ContractStatusBadge } from './contract-status-badge';
 
-const EyeIcon = () => (
-  <button className="text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-  </button>
-);
 
 function formatActivationTime(iso: string): string {
   try {
@@ -45,6 +37,175 @@ interface ContractsTableProps {
   onSelectContract?: (contract: Contract) => void;
 }
 
+// ─── Token icon + switcher for the Token Cost column ─────────────────
+
+const TOKEN_ICON_COLORS: Record<string, string> = {
+  USDT: '#26A17B', USDC: '#2775CA', DAI: '#F5AC37',
+  WETH: '#627EEA', ETH:  '#627EEA', BNB: '#F3BA2F',
+  BUSD: '#F0B90B', MATIC:'#8247E5', SHIB:'#E07D27',
+};
+
+// Well-known token contract addresses → CoinGecko image URL
+const KNOWN_TOKEN_IMGS: Record<string, string> = {
+  '0xdac17f958d2ee523a2206206994597c13d831ec7': 'https://assets.coingecko.com/coins/images/325/small/Tether.png',
+  '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 'https://assets.coingecko.com/coins/images/6319/small/usdc.png',
+  '0x6b175474e89094c44da98b954eedeac495271d0f': 'https://assets.coingecko.com/coins/images/9956/small/dai-multi-collateral-mcd.png',
+  '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': 'https://assets.coingecko.com/coins/images/2518/small/weth.png',
+  '0xb8c77482e45f1f44de1745f52c74426c631bdd52': 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
+  '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599': 'https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png',
+  '0x514910771af9ca656af840dff83e8264ecf986ca': 'https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png',
+  '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984': 'https://assets.coingecko.com/coins/images/12504/small/uniswap-uni.png',
+  '0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce': 'https://assets.coingecko.com/coins/images/11939/small/shiba.png',
+  '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0': 'https://assets.coingecko.com/coins/images/4713/small/matic-token-icon.png',
+};
+
+// ─── Inline editable cell ────────────────────────────────────────────
+
+function EditableCell({
+  value,
+  contractId,
+  field,
+  onSave,
+}: {
+  value: string;
+  contractId: string;
+  field: string;
+  onSave: (id: string, field: string, value: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  function commit() {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) {
+      onSave(contractId, field, trimmed);
+    } else {
+      setDraft(value);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <span
+        className="cursor-pointer hover:bg-blue-50 px-1 py-0.5 rounded border border-transparent hover:border-blue-200 transition-colors"
+        onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
+        title="Double-click to edit"
+      >
+        {value}
+      </span>
+    );
+  }
+
+  return (
+    <input
+      className="border border-blue-400 rounded px-1 py-0.5 text-sm w-full outline-none focus:ring-1 focus:ring-blue-400"
+      value={draft}
+      autoFocus
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+        if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+      }}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
+function TokenIcon({ symbol, contractAddress }: { symbol: string; contractAddress?: string }) {
+  const [imgOk, setImgOk] = useState(true);
+  const ca    = contractAddress?.toLowerCase() ?? '';
+  const color = TOKEN_ICON_COLORS[symbol.toUpperCase()] ?? '#9CA3AF';
+  const label = symbol ? symbol.slice(0, 4) : '?';
+
+  // Pick image URL: known list first, then Trust Wallet CDN by contract address
+  const imgSrc = KNOWN_TOKEN_IMGS[ca]
+    ?? (ca ? `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${contractAddress}/logo.png` : '');
+
+  if (imgSrc && imgOk) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imgSrc}
+        alt={symbol}
+        width={20}
+        height={20}
+        className="rounded-full"
+        style={{ flexShrink: 0 }}
+        onError={() => setImgOk(false)}
+      />
+    );
+  }
+
+  // Fallback: colored letter circle
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full text-white font-bold"
+      style={{ width: 20, height: 20, fontSize: 7, backgroundColor: color, flexShrink: 0 }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function TokenCostCell({ contract }: { contract: Contract }) {
+  const [idx, setIdx] = useState(0);
+  const breakdown = contract.tokenBreakdown;
+
+  if (!breakdown || breakdown.length === 0) {
+    const usd = contract.tokenFee ?? 0;
+    const amt = contract.airdropToday ?? 0;
+    const sym = contract.tokenSymbol;
+    return (
+      <div>
+        <div className={`font-semibold ${usd > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+          ${usd.toFixed(2)}
+        </div>
+        <div className="text-xs text-gray-400">{amt.toLocaleString()} {sym || '—'}</div>
+      </div>
+    );
+  }
+
+  const total = breakdown.length;
+  const cur   = breakdown[idx % total];
+  return (
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <div className="flex items-center gap-1">
+        <TokenIcon symbol={cur.symbol} contractAddress={cur.tokenContract} />
+        <span className={`font-semibold text-sm ${cur.amountUsdToday > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+          ${cur.amountUsdToday.toFixed(2)}
+        </span>
+        {total > 1 && (
+          <div className="flex items-center ml-auto gap-px">
+            <button
+              className="text-gray-400 hover:text-blue-500 px-0.5 leading-none"
+              style={{ fontSize: 14 }}
+              onClick={(e) => { e.stopPropagation(); setIdx(i => (i - 1 + total) % total); }}
+              title="Previous token"
+            >‹</button>
+            <span className="text-[10px] text-gray-400">{idx + 1}/{total}</span>
+            <button
+              className="text-gray-400 hover:text-blue-500 px-0.5 leading-none"
+              style={{ fontSize: 14 }}
+              onClick={(e) => { e.stopPropagation(); setIdx(i => (i + 1) % total); }}
+              title="Next token"
+            >›</button>
+          </div>
+        )}
+      </div>
+      <div className="text-xs text-gray-400">
+        {cur.amountToday.toLocaleString()} {cur.symbol}
+        {cur.amountYesterday > 0 && (
+          <span className="ml-1 text-gray-300">/ {cur.amountYesterday.toLocaleString()} yest</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ContractsTable({ initialData, onSelectContract }: ContractsTableProps) {
   const t = useTranslations('table');
   const { contracts, totals, pagination, isLoading, error, retry, setPage, setSort } =
@@ -53,6 +214,21 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleInlineSave = useCallback(async (id: string, field: string, value: string) => {
+    try {
+      await updateContract(id, { [field]: value });
+      setLocalContracts((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+      );
+      setTimeout(() => {
+        retry();
+        window.dispatchEvent(new Event('contracts:updated'));
+      }, 200);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update');
+    }
+  }, [retry]);
 
   const handleDelete = useCallback(async (e: React.MouseEvent, contract: Contract) => {
     e.stopPropagation();
@@ -67,12 +243,16 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         setLocalTotals(calcTotals(updated));
         return updated;
       });
+      setTimeout(() => {
+        retry();
+        window.dispatchEvent(new Event('contracts:updated'));
+      }, 200);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete contract');
     } finally {
       setDeletingId(null);
     }
-  }, []);
+  }, [retry]);
 
   const handleSortingChange = useCallback(
     (updater: SortingState | ((old: SortingState) => SortingState)) => {
@@ -97,6 +277,14 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         accessorKey: 'contractNumber',
         header: t('contractNumber'),
         size: 100,
+        cell: ({ row }) => (
+          <EditableCell
+            value={row.original.contractNumber}
+            contractId={row.original.id}
+            field="contractNumber"
+            onSave={handleInlineSave}
+          />
+        ),
       },
       {
         accessorKey: 'activationTime',
@@ -108,58 +296,45 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         accessorKey: 'contractAddress',
         header: t('contractAddress'),
         size: 140,
+        cell: ({ row }) => (
+          <EditableCell
+            value={row.original.contractAddress}
+            contractId={row.original.id}
+            field="contractAddress"
+            onSave={handleInlineSave}
+          />
+        ),
       },
       {
         accessorKey: 'contractStatus',
-        header: () => (
-          <div className="flex items-center gap-1">
-            {t('contractStatus')}
-            <EyeIcon />
-          </div>
-        ),
+        header: t('contractStatus'),
         cell: ({ row }) => <ContractStatusBadge status={row.original.contractStatus} />,
         size: 100,
       },
       {
         accessorKey: 'deliveryStrategy',
-        header: () => (
-          <div className="flex items-center gap-1">
-            {t('deliveryStrategy')}
-            <EyeIcon />
-          </div>
-        ),
+        header: t('deliveryStrategy'),
         cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <span className="text-blue-500 font-medium">{row.original.deliveryStrategy}</span>
-            <EyeIcon />
-          </div>
+          <EditableCell
+            value={row.original.deliveryStrategy}
+            contractId={row.original.id}
+            field="deliveryStrategy"
+            onSave={handleInlineSave}
+          />
         ),
         size: 100,
       },
       {
         accessorKey: 'gasLimit',
-        header: () => (
-          <div className="flex items-center gap-1">
-            {t('gasLimit')}
-            <EyeIcon />
-          </div>
-        ),
+        header: t('gasLimit'),
         cell: ({ row }) => (
-          <div className="flex items-center gap-1">
-            <span>{typeof row.original.gasLimit === 'number' ? `${row.original.gasLimit}gwei` : row.original.gasLimit}</span>
-            <EyeIcon />
-          </div>
+          <span>{typeof row.original.gasLimit === 'number' ? `${row.original.gasLimit}gwei` : row.original.gasLimit}</span>
         ),
         size: 100,
       },
       {
         accessorKey: 'airdropQuantity',
-        header: () => (
-          <div className="flex items-center gap-1">
-            {t('airdropQuantity')}
-            <EyeIcon />
-          </div>
-        ),
+        header: t('airdropQuantity'),
         cell: ({ row }) => {
           const countYesterday = Number(row.original.txCountYesterday ?? 0);
           const countToday = Number(row.original.txCountToday ?? 0);
@@ -172,22 +347,7 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
       {
         id: 'tokenCost',
         header: t('tokenCost'),
-        cell: ({ row }) => {
-          const sym = row.original.tokenSymbol;
-          const amt = row.original.airdropToday ?? 0;
-          const price = row.original.tokenPrice ?? 0;
-          const usd = amt * price;
-          return (
-            <div>
-              <div className={`font-semibold ${usd > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                ${usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-xs text-gray-400">
-                {amt.toLocaleString()} {sym || '—'}
-              </div>
-            </div>
-          );
-        },
+        cell: ({ row }) => <TokenCostCell contract={row.original} />,
         size: 190,
       },
       {
@@ -240,7 +400,7 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         ),
       },
     ],
-    [t, totals, deletingId, handleDelete]
+    [t, totals, deletingId, handleDelete, handleInlineSave]
   );
 
   // Keep a local copy of contracts to allow immediate UI updates when config is applied
@@ -426,9 +586,6 @@ export function ContractsTable({ initialData, onSelectContract }: ContractsTable
         </table>
       </div>
 
-      {/* Totals Row */}
-      {(totals ?? localTotals) && <TotalsRow totals={(totals ?? localTotals) as ContractTotals} />}
-
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-eth-border">
@@ -462,10 +619,7 @@ function TotalsRow({ totals }: { totals: ContractTotals }) {
     <div className="flex items-center justify-end gap-8 px-4 py-3 bg-white border-t border-eth-border text-sm font-semibold text-blue-600">
       <span>{totals.totalAirdropQuantity.toLocaleString()}</span>
       <span>${totals.totalTokenFee.toLocaleString()}</span>
-      <div className="flex flex-col items-end">
-        <span>${totals.totalGasCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        <span className="text-xs text-gray-400 font-normal">Total Gas Today</span>
-      </div>
+      <span>${totals.totalGasCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
       <span>${totals.totalCost.toLocaleString()}</span>
       <span>${totals.totalAverageCost}</span>
       <span>{totals.grandCumulativeQuantity.toLocaleString()}</span>

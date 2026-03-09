@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listContracts, getContract, configureContract, deleteContractById, refreshContracts } from '../controllers/contractsController';
+import { listContracts, getContract, configureContract, updateContractById, deleteContractById, refreshContracts } from '../controllers/contractsController';
 import { getStats } from '../controllers/statsController';
 
 const router = Router();
@@ -15,6 +15,9 @@ router.get('/:id', getContract);
 
 // POST /api/contracts/config
 router.post('/config', configureContract);
+
+// PATCH /api/contracts/:id  — inline edit fields
+router.patch('/:id', updateContractById);
 
 // DELETE /api/contracts/:id
 router.delete('/:id', deleteContractById);

@@ -5,8 +5,8 @@ import { refreshAllContracts } from './services/contractsService';
 const PORT = Number(process.env.PORT) || 4000;
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on http://0.0.0.0:${PORT}`);
   console.log(`Mock data: ${process.env.USE_MOCK_DATA !== 'false' ? 'enabled' : 'disabled'}`);
 
   // Auto-refresh all contract rows every 5 minutes with live Etherscan data

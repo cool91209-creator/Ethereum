@@ -8,6 +8,16 @@ export const contractStatusSchema = z.enum([
   'stopped',
 ]);
 
+export const tokenBreakdownItemSchema = z.object({
+  tokenContract:    z.string(),
+  symbol:           z.string(),
+  amountToday:      z.number(),
+  amountYesterday:  z.number(),
+  amountUsdToday:   z.number(),
+  txCountToday:     z.number(),
+  txCountYesterday: z.number(),
+});
+
 export const contractSchema = z.object({
   id: z.string(),
   serialNumber: z.number(),
@@ -32,6 +42,7 @@ export const contractSchema = z.object({
   totalCost: z.number(),
   averageCost: z.number(),
   cumulativeQuantity: z.number(),
+  tokenBreakdown: z.array(tokenBreakdownItemSchema).optional(),
 });
 
 export const contractTotalsSchema = z.object({

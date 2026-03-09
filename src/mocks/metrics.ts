@@ -13,10 +13,10 @@ export function generateMockMetricsBuckets(): MetricsBucket[] {
 
   return Array.from({ length: 24 }, (_, i) => ({
     hour: String(i).padStart(2, '0'),
-    primaryValue: primaryValues[i] || 128,
-    secondaryValue: secondaryValues[i] || 157,
-    primaryGas: 0.03,
-    secondaryGas: 0.023,
+    bars: [
+      { contractNumber: 'primary', txCount: primaryValues[i] || 128, avgGasGwei: 0.03 },
+      { contractNumber: 'secondary', txCount: secondaryValues[i] || 157, avgGasGwei: 0.023 },
+    ],
   }));
 }
 

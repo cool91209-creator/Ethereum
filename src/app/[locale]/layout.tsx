@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import '../globals.css';
-import { locales, defaultLocale, type Locale } from '@/lib/i18n/config';
+import { locales, type Locale } from '@/lib/i18n/config';
 import { notFound } from 'next/navigation';
 
 export function generateStaticParams() {
@@ -14,10 +14,10 @@ export const metadata: Metadata = {
   description: 'Ethereum airdrop contract management dashboard',
 };
 
-export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: { locale: string } }) {
-  const localeParam = params.locale as Locale;
+export default async function LocaleLayout({ children, params }: { children: React.ReactNode; params: Promise<{ locale: string }> | { locale: string } }) {
+  const resolvedParams = await Promise.resolve(params);
+  const localeParam = resolvedParams.locale as Locale;
   if (!locales.includes(localeParam)) {
-    // If locale not supported, show 404 / notFound
     notFound();
   }
 

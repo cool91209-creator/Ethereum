@@ -31,6 +31,7 @@ async function fetchContracts(): Promise<ContractsResponse> {
       totals: {
         totalAirdropQuantity: 0,
         totalAirdropToday: 0,
+        totalTxCountToday: 0,
         totalTokenFee: 0,
         totalGasCost: 0,
         totalCost: 0,

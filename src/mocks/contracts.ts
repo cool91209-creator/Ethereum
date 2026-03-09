@@ -44,6 +44,8 @@ export function generateMockTotals(all?: Contract[]): ContractTotals {
 
   return {
     totalAirdropQuantity,
+    totalAirdropToday: 0,
+    totalTxCountToday: 0,
     totalTokenFee,
     totalGasCost,
     totalCost,

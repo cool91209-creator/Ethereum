@@ -108,6 +108,13 @@ export const apiClient = {
     });
   },
 
+  patch<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
+    return request<T>(path, {
+      method: 'PATCH',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  },
+
   delete<T>(path: string): Promise<ApiResponse<T>> {
     return request<T>(path, { method: 'DELETE' });
   },

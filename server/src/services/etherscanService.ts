@@ -241,6 +241,44 @@ export async function getContractTodayTransfers(
 }
 
 /**
+ * Fetch ALL ERC-20 token transfers for a wallet address across ALL token types
+ * (no contractaddress filter), starting from a given block.
+ * Used to build the full multi-token breakdown per configured contract.
+ */
+export async function getAllWalletTokenTransfers(
+  walletAddress: string,
+  startBlock: string,
+  startTs: number
+): Promise<TokenTransfer[]> {
+  const all: TokenTransfer[] = [];
+  let page = 1;
+
+  while (true) {
+    const result = await etherscanRequest({
+      module: 'account',
+      action: 'tokentx',
+      address: walletAddress,
+      startblock: startBlock,
+      endblock: '99999999',
+      page: String(page),
+      offset: '200',
+      sort: 'desc',
+    });
+    const txs = Array.isArray(result) ? result as TokenTransfer[] : [];
+    if (txs.length === 0) break;
+
+    const recent = txs.filter(t => parseInt(t.timeStamp) >= startTs);
+    all.push(...recent);
+
+    if (txs.length < 200 || recent.length < txs.length) break;
+    if (page >= 50) break;
+    page++;
+  }
+
+  return all;
+}
+
+/**
  * Sample the 50 most recent ERC-20 transfers for a wallet (no time restriction).
  * Used purely to detect whether an address is a wallet (sends other tokens) or a token contract.
  * No startblock — always returns data even when the wallet had no activity today.

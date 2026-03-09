@@ -52,6 +52,19 @@ export function useMetrics(from?: string, to?: string) {
     fetchData();
   }, [fetchData]);
 
+  // Auto-refresh when contracts change (config add, inline edit, delete)
+  useEffect(() => {
+    function onRefresh() {
+      setTimeout(() => fetchData(), 200);
+    }
+    window.addEventListener('contracts:refresh', onRefresh);
+    window.addEventListener('contracts:updated', onRefresh);
+    return () => {
+      window.removeEventListener('contracts:refresh', onRefresh);
+      window.removeEventListener('contracts:updated', onRefresh);
+    };
+  }, [fetchData]);
+
   const retry = useCallback(() => {
     fetchData();
   }, [fetchData]);

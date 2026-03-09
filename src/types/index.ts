@@ -29,6 +29,7 @@ export interface Contract {
   totalCost: number;
   averageCost: number;
   cumulativeQuantity: number;
+  tokenBreakdown?: TokenBreakdownItem[];
 }
 
 // Aggregated totals row shown at bottom of table
@@ -58,13 +59,28 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
-// Single bar in the metrics chart
+/** One token that the distributor wallet sent today and/or yesterday. */
+export interface TokenBreakdownItem {
+  tokenContract:   string;
+  symbol:          string;
+  amountToday:     number;
+  amountYesterday: number;
+  amountUsdToday:  number;
+  txCountToday:    number;
+  txCountYesterday: number;
+}
+
+// One bar in a chart column — one contract's data for that hour
+export interface ContractBarData {
+  contractNumber: string;
+  txCount: number;
+  avgGasGwei: number;
+}
+
+// Single hour column in the metrics chart
 export interface MetricsBucket {
   hour: string; // "00", "01", ... "23"
-  primaryValue: number;
-  secondaryValue: number;
-  primaryGas: number;
-  secondaryGas: number;
+  bars: ContractBarData[]; // one entry per configured contract
 }
 
 // Metrics history response

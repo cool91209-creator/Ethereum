@@ -1,12 +1,15 @@
 import { z } from 'zod';
 import { paginationMetaSchema } from './contracts';
 
+const contractBarDataSchema = z.object({
+  contractNumber: z.string(),
+  txCount:        z.number(),
+  avgGasGwei:     z.number(),
+});
+
 export const metricsBucketSchema = z.object({
   hour: z.string(),
-  primaryValue: z.number(),
-  secondaryValue: z.number(),
-  primaryGas: z.number(),
-  secondaryGas: z.number(),
+  bars: z.array(contractBarDataSchema),
 });
 
 export const metricsHistoryResponseSchema = z.object({

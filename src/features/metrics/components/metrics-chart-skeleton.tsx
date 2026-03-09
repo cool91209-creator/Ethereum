@@ -10,12 +10,12 @@ export function MetricsChartSkeleton() {
               <div className="flex items-end gap-px w-full justify-center h-32">
                 <div className="flex flex-col items-center flex-1">
                   <Skeleton className="w-4 h-3 mb-0.5" />
-                  <Skeleton className="w-full rounded-t" style={{ height: `${40 + Math.random() * 40}%` }} />
+                  <div style={{ height: `${40 + Math.random() * 40}%` }}><Skeleton className="w-full h-full rounded-t" /></div>
                   <Skeleton className="w-4 h-2 mt-0.5" />
                 </div>
                 <div className="flex flex-col items-center flex-1">
                   <Skeleton className="w-4 h-3 mb-0.5" />
-                  <Skeleton className="w-full rounded-t" style={{ height: `${40 + Math.random() * 40}%` }} />
+                  <div style={{ height: `${40 + Math.random() * 40}%` }}><Skeleton className="w-full h-full rounded-t" /></div>
                   <Skeleton className="w-4 h-2 mt-0.5" />
                 </div>
               </div>

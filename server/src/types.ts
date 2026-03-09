@@ -1,6 +1,17 @@
 export type ContractStatus = 'running' | 'preparing' | 'ready' | 'limited' | 'stopped';
 export type DeliveryStrategy = '1+2+3';
 
+/** One token that the distributor wallet sent today and/or yesterday. */
+export interface TokenBreakdownItem {
+  tokenContract:   string;
+  symbol:          string;
+  amountToday:     number;
+  amountYesterday: number;
+  amountUsdToday:  number;
+  txCountToday:    number;
+  txCountYesterday: number;
+}
+
 export interface Contract {
   id: string;
   serialNumber: number;
@@ -25,6 +36,7 @@ export interface Contract {
   totalCost: number;
   averageCost: number;
   cumulativeQuantity: number;
+  tokenBreakdown?: TokenBreakdownItem[];
 }
 
 export interface ContractDetail {
@@ -72,12 +84,15 @@ export interface ContractConfigPayload {
   gasLimit: number;
 }
 
+export interface ContractBarData {
+  contractNumber: string;
+  txCount: number;
+  avgGasGwei: number;
+}
+
 export interface MetricsBucket {
-  hour: string;
-  primaryValue: number;
-  secondaryValue: number;
-  primaryGas: number;
-  secondaryGas: number;
+  hour: string; // "00" – "23"
+  bars: ContractBarData[]; // one entry per configured contract
 }
 
 export interface MetricsHistoryResponse {

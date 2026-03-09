@@ -57,6 +57,27 @@ export async function deleteContractById(req: Request, res: Response): Promise<v
   }
 }
 
+export async function updateContractById(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params as { id: string };
+    const updates = req.body as Record<string, unknown>;
+    const allowed: Record<string, string | undefined> = {};
+    if (typeof updates.contractNumber === 'string') allowed.contractNumber = updates.contractNumber;
+    if (typeof updates.contractAddress === 'string') allowed.contractAddress = updates.contractAddress;
+    if (typeof updates.deliveryStrategy === 'string') allowed.deliveryStrategy = updates.deliveryStrategy;
+
+    const updated = contractsService.updateContract(id, allowed as any);
+    if (!updated) {
+      res.status(404).json({ code: 'NOT_FOUND', message: `Contract ${id} not found` });
+      return;
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[updateContractById]', err);
+    res.status(500).json({ code: 'INTERNAL_ERROR', message: 'Failed to update contract' });
+  }
+}
+
 export async function configureContract(req: Request, res: Response): Promise<void> {
   try {
     const body = req.body as ContractConfigPayload;

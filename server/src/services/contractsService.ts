@@ -143,7 +143,7 @@ function mapTransfersToContracts(
       contractStatus: status,
       tokenSymbol,
       deliveryStrategy: '1+2+3',
-      gasLimit: parseFloat(networkGasPriceGwei.toFixed(2)),
+      gasLimit: 0.03,
       airdropQuantity,
       airdropYesterday,
       airdropToday,
@@ -313,6 +313,27 @@ async function fetchLiveData(addr: string, fallbackSymbol = ''): Promise<LiveDat
   let multiTodayRaw:     TokenTransfer[];
   let multiYesterdayRaw: TokenTransfer[];
   const addrLow = addr.toLowerCase();
+
+  if (sample.length === 0) {
+    // No token transfers found at all for this address — return empty data
+    console.log(`[fetchLiveData] ${addr}: no token transfers found — returning empty data`);
+    const tokenInfo = await getTokenInfo(addr);
+    return {
+      isWalletMode: false,
+      tokenContractAddr: addr,
+      tokenSymbol: tokenInfo?.symbol || fallbackSymbol || '',
+      tokenPriceUsd: 0,
+      txCountToday: 0,
+      txCountYesterday: 0,
+      airdropToday: 0,
+      airdropYesterday: 0,
+      gasCostUsd: 0,
+      tokenFeeUsd: 0,
+      totalCost: 0,
+      networkGasPriceGwei: parseFloat(gasOracleData.ProposeGasPrice) || 0,
+      tokenBreakdown: [],
+    };
+  }
 
   if (!isTokenContract && otherTokenActivity.length > 0) {
     isWalletMode = true;
@@ -538,7 +559,7 @@ async function refreshSingleContract(contract: Contract): Promise<void> {
     ...cachedContracts[idx],
     contractStatus:    live.txCountToday > 0 ? 'running' : 'stopped',
     tokenSymbol:       live.tokenSymbol || cachedContracts[idx].tokenSymbol,
-    gasLimit:          parseFloat(live.networkGasPriceGwei.toFixed(2)),
+    gasLimit:          0.03,
     airdropQuantity:   live.airdropToday + live.airdropYesterday,
     airdropYesterday:  live.airdropYesterday,
     airdropToday:      live.airdropToday,
